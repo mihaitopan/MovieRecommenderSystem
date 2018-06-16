@@ -15,3 +15,6 @@ ENV/
 *.zip
 *.png
 *.txt
+*.doc
+*.docx
+*.pdf
