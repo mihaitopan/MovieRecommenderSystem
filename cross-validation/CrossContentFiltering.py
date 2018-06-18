@@ -234,6 +234,7 @@ class CrossContentFiltering:
 
 
     def test(self):
+        crossMAEMean = 0
         crossRMSDMean = 0
         for idx in range(0, self._noCross):
             # read data into arrays
@@ -252,11 +253,14 @@ class CrossContentFiltering:
 
             # get RMSD for each test set
             testDiff = abs(testRatings - testResults)
+            mae = testDiff[testDiff > 0].mean()
+            crossMAEMean += mae
             rmsd = (np.diff(testDiff[testDiff > 0]) ** 2).mean() ** 0.5
             crossRMSDMean += rmsd
 
         # return RMSD and Accuracy
+        crossMAEMean = crossMAEMean / self._noCross
         crossRMSDMean = crossRMSDMean / self._noCross
         crossAccuracy = 1 - crossRMSDMean / 5
-        return crossRMSDMean, crossAccuracy
+        return crossMAEMean, crossRMSDMean, crossAccuracy
 

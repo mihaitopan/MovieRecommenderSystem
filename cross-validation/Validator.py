@@ -4,7 +4,7 @@ from CrossContentFiltering import CrossContentFiltering
 
 if __name__ == "__main__":
     # constants
-    command = "ConCon"
+    command = "ColCon"
     noCrossValidationSets = 5
 
     # what to validate?
@@ -14,8 +14,9 @@ if __name__ == "__main__":
         trainSetPath = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\cross-validation\\sets\\"
 
         crossValidator = CrossCollaborativeFiltering(dataset, trainSetPath, noCrossValidationSets)
-        crossValidator.train()
-        rmsd, accuracy = crossValidator.test()
+        #crossValidator.train()
+        mae, rmsd, accuracy = crossValidator.test()
+        print("mae: ", mae)
         print("rmsd: ", rmsd)
         print("accuracy: ", accuracy)
 
@@ -25,8 +26,9 @@ if __name__ == "__main__":
         trainSetPath = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\cross-validation\\sets\\"
 
         crossValidator = CrossCollaborativeFiltering(dataset, trainSetPath, noCrossValidationSets)
-        crossValidator.train()
-        rmsd, accuracy = crossValidator.test()
+        #crossValidator.train()
+        mae, rmsd, accuracy = crossValidator.test()
+        print("mae: ", mae)
         print("rmsd: ", rmsd)
         print("accuracy: ", accuracy)
 
@@ -37,8 +39,9 @@ if __name__ == "__main__":
         trainSetPath = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\cross-validation\\sets\\"
 
         crossValidator = CrossContentFiltering(ratingsFilename, tagsFilename, trainSetPath, noCrossValidationSets)
-        crossValidator.train()
-        rmsd, accuracy = crossValidator.test()
+        #crossValidator.train()
+        mae, rmsd, accuracy = crossValidator.test()
+        print("mae: ", mae)
         print("rmsd: ", rmsd)
         print("accuracy: ", accuracy)
 
