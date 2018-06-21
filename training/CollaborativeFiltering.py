@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.optimize as sc
 import heapq
+from sys import exit
 
 
 class CollaborativeFiltering:
@@ -21,13 +22,19 @@ class CollaborativeFiltering:
         self._lambdaCoeff = lambdaCoeff
 
 
-    def _readData(self, noMaxUsers=1000, noMaxMovies=10000):
+    def _readData(self, noMaxUsers=10000, noMaxMovies=10000):
         Ratings = pd.read_csv(self._dataset, low_memory=False)
 
         noUniqueMovies = Ratings[["movieId"]].drop_duplicates().size
-        assert (noUniqueMovies < noMaxMovies)
+        # assert (noUniqueMovies < noMaxMovies)
+        if noUniqueMovies > noMaxMovies:
+            print("dataset exceeds maximum size (noMaxMovies=10000)")
+            exit()
         noUniqueUsers = Ratings[["userId"]].drop_duplicates().size
-        assert (noUniqueUsers < noMaxUsers)
+        # assert (noUniqueUsers < noMaxUsers)
+        if noUniqueUsers > noMaxUsers:
+            print("dataset exceeds maximum size (noMaxUsers=10000)")
+            exit()
 
         values = Ratings[["userId", "movieId", "rating"]].values
         RatingsArray = np.zeros(shape=(noUniqueMovies, noUniqueUsers))
@@ -35,8 +42,8 @@ class CollaborativeFiltering:
             user = np.int64(values[i][0])
             movie = np.int64(values[i][1])
             rating = values[i][2]
-            assert (RatingsArray[movie][user] == 0)
-            assert (rating >= 0)
+            # assert (RatingsArray[movie][user] == 0)
+            # assert (rating >= 0)
             if rating == 0:
                 rating = 0.01
             RatingsArray[movie][user] = rating
@@ -135,7 +142,7 @@ class CollaborativeFiltering:
         # minimize cost function
         results = sc.minimize(costFunc,
                               x0=params,
-                              options={'disp': True, 'maxiter': self._noMaxIterations},
+                              options={'disp': False, 'maxiter': self._noMaxIterations},
                               method="L-BFGS-B",
                               jac=True)
         # unfold the results
@@ -166,31 +173,43 @@ class CollaborativeFiltering:
 
     def getSimilarMovies(self, movieId, noMovies):
         FeatureArray = self._readFeatures()
-
+        # assert (RatingsArray.shape[0] > movieId)
+        if FeatureArray.shape[0] < movieId:
+            print("movieId exceeds length of movieIds")
+            exit()
         givenFeatureVector = FeatureArray[movieId]
-        similarMovies = []
+        similarMoviesHeap = []
         for idx in range(0, FeatureArray.shape[0]):
             if movieId == idx:
                 continue
             row = FeatureArray[idx]
             compareFeatureVectors = abs(row - givenFeatureVector)
-            assert (len(similarMovies) <= noMovies)
-            if len(similarMovies) < noMovies:
-                heapq.heappush(similarMovies, (-compareFeatureVectors.sum(), compareFeatureVectors, idx))
+            assert (len(similarMoviesHeap) <= noMovies)
+            if len(similarMoviesHeap) < noMovies:
+                heapq.heappush(similarMoviesHeap, (-compareFeatureVectors.sum(), compareFeatureVectors, idx))
             else:
-                #heapq.heapify(similarMovies)
-                heapq.heappushpop(similarMovies, (-compareFeatureVectors.sum(), compareFeatureVectors, idx))
+                #heapq.heapify(similarMoviesHeap)
+                heapq.heappushpop(similarMoviesHeap, (-compareFeatureVectors.sum(), compareFeatureVectors, idx))
 
+        similarMoviesHeapSize = len(similarMoviesHeap)
+        similarMovies = [heapq.heappop(similarMoviesHeap) for _ in range(0, similarMoviesHeapSize)]
+        similarMovies = list(reversed(similarMovies))
         similarMoviesIds = [elem[2] for elem in similarMovies]
         return similarMoviesIds
 
 
     def getImpersonatedUserMovies(self, userId, noMovies):
         RatingsArray = self._readRatings()
+        # assert (RatingsArray.shape[1] > userId)
+        if RatingsArray.shape[1] < userId:
+            print("userId exceeds length of userIds")
+            exit()
         userRatings = list(RatingsArray[:,userId])
         for i in range(0, len(userRatings)):
             userRatings[i] = (i, userRatings[i])
         userRatings.sort(key=lambda x: x[1], reverse=True)
-        assert (len(userRatings) > noMovies)
+        # assert (len(userRatings) > noMovies)
+        if len(userRatings) < noMovies:
+            print("noMovies exceeds length of userRatings")
+            exit()
         return userRatings[:noMovies]
-

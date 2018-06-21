@@ -9,9 +9,13 @@ class Repository:
         self._readData()
 
     def _readData(self):
-        Movies = pd.read_csv(self._filename, encoding='latin1', low_memory=False)
-        for _, row in Movies.iterrows():
-            self._movies[row["movieId"]] = Movie(row["movieId"], row["title"], row["genres"])
+        try:
+            Movies = pd.read_csv(self._filename, encoding='latin1', low_memory=False)
+            Movies = Movies.sort_values("movieId", axis=0)
+            for _, row in Movies.iterrows():
+                self._movies[row["movieId"]] = Movie(row["movieId"], row["title"], row["genres"])
+        except IOError:
+            print("Could not read input. Please respect initial input data and directory tree.")
 
     def getMovieById(self, movieID):
         if movieID in self._movies.keys():

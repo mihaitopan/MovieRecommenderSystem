@@ -12,9 +12,20 @@ ENV/
 
 # DATA
 *.csv
+!data/content/contentMovies.csv
+!data/content/contentRatings.csv
+!data/content/contentTags.csv
+!data/collaborative/collaborativeRatings.csv
+!training/sets/CollaborativeFeatures.csv
+!training/sets/CollaborativeRatings.csv
+!training/sets/ContentFeatures.csv
+!training/sets/ContentRatings.csv
 *.zip
 *.png
 *.txt
 *.doc
 *.docx
 *.pdf
+
+# Doc
+.documentation/

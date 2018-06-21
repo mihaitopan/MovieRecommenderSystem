@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import heapq
+from sys import exit
 
 
 class ContentFiltering:
@@ -16,16 +17,22 @@ class ContentFiltering:
         self._trainSetExt = ".csv"
 
 
-    def _readData(self, noMaxUsers=1000, noMaxMovies=10000):
+    def _readData(self, noMaxUsers=10000, noMaxMovies=10000):
         Ratings = pd.read_csv(self._ratingsData, encoding='latin1', low_memory=False)
         Tags = pd.read_csv(self._tagsData, encoding='latin1', low_memory=False)
         Ratings = Ratings[["movieId", "userId", "rating"]]
         Tags = Tags[["movieId", "userId", "tag"]]
 
         noUniqueMovies = Ratings[["movieId"]].drop_duplicates().size
-        assert (noUniqueMovies < noMaxMovies)
+        # assert (noUniqueMovies < noMaxMovies)
+        if noUniqueMovies > noMaxMovies:
+            print("dataset exceeds maximum size (noMaxMovies=10000)")
+            exit()
         noUniqueUsers = Ratings[["userId"]].drop_duplicates().size
-        assert (noUniqueUsers < noMaxUsers)
+        # assert (noUniqueUsers < noMaxUsers)
+        if noUniqueUsers > noMaxUsers:
+            print("dataset exceeds maximum size (noMaxUsers=10000)")
+            exit()
 
         values = Ratings[["userId", "movieId", "rating"]].values
         RatingsArray = np.zeros(shape=(noUniqueMovies, noUniqueUsers))
@@ -33,8 +40,8 @@ class ContentFiltering:
             user = np.int64(values[i][0])
             movie = np.int64(values[i][1])
             rating = values[i][2]
-            assert (RatingsArray[movie][user] == 0)
-            assert (rating >= 0)
+            # assert (RatingsArray[movie][user] == 0)
+            # assert (rating >= 0)
             if rating == 0:
                 rating = 0.01
             RatingsArray[movie][user] = rating
@@ -42,22 +49,30 @@ class ContentFiltering:
         return RatingsArray, Ratings, Tags
 
 
-    def _saveTrainRatings(self, noMaxUsers=1000, noMaxMovies=10000):
+    def _saveTrainRatings(self, noMaxUsers=10000, noMaxMovies=10000):
         FoundRatings = pd.read_csv(self._trainSetPath + self._ratingsSetName + self._trainSetExt, low_memory=False)
 
         noUniqueMovies = FoundRatings[["movieId"]].drop_duplicates().size
-        assert (noUniqueMovies < noMaxMovies)
+        # assert (noUniqueMovies < noMaxMovies)
+        if noUniqueMovies > noMaxMovies:
+            print("dataset exceeds maximum size (noMaxMovies=10000)")
+            exit()
         noUniqueUsers = FoundRatings[["userId"]].drop_duplicates().size
-        assert (noUniqueUsers < noMaxUsers)
+        # assert (noUniqueUsers < noMaxUsers)
+        if noUniqueUsers > noMaxUsers:
+            print("dataset exceeds maximum size (noMaxUsers=10000)")
+            exit()
 
         values = FoundRatings[["userId", "movieId", "rating"]].values
-        #RatingsArray = np.zeros(shape=(noUniqueMovies, noUniqueUsers))
-        RatingsArray = np.zeros(shape=(noUniqueMovies + 5, noUniqueUsers)) # 5 movies have no tags in my dataset
+        # margin for movies which don't ha associated tags
+        noUniqueMoviesMargin = noUniqueMovies + int(noUniqueMovies / 50)
+        noUniqueUsersMargin = noUniqueUsers + int(noUniqueUsers / 50)
+        RatingsArray = np.zeros(shape=(noUniqueMoviesMargin, noUniqueUsersMargin))
         for i in range(0, values.shape[0]):
             user = np.int64(values[i][0])
             movie = np.int64(values[i][1])
             rating = values[i][2]
-            assert (RatingsArray[movie][user] == 0)
+            # assert (RatingsArray[movie][user] == 0)
             RatingsArray[movie][user] = rating
 
         recommendationsSet = pd.DataFrame.from_records(RatingsArray)
@@ -142,6 +157,10 @@ class ContentFiltering:
             userVector["user"] = userId
             usersPreferences = usersPreferences.append(userVector, ignore_index=True)
 
+        # append ratings to file and reset dataframe (not to get too big)
+        FoundRatings = pd.DataFrame([["","userId","movieId","rating"]])
+        FoundRatings.to_csv(self._trainSetPath + self._ratingsSetName + self._trainSetExt, header=False, index=False)
+
         # append to the results file each user's predictions
         FoundRatings = pd.DataFrame()
         userIdsArray = np.unique(Ratings["userId"])
@@ -188,9 +207,13 @@ class ContentFiltering:
 
     def getSimilarMovies(self, movieId, noMovies):
         FeatureArray = self._readFeatures()
+        # assert (RatingsArray.shape[0] > movieId)
+        if FeatureArray.shape[0] < movieId:
+            print("movieId exceeds length of movieIds")
+            exit()
         givenMovieFeatureArray = FeatureArray.loc[FeatureArray["movieId"] == movieId]
 
-        similarMovies = []
+        similarMoviesHeap = []
         distinctMovies = np.unique(FeatureArray["movieId"])
         for movie in distinctMovies:
             if movie == movieId:
@@ -214,23 +237,33 @@ class ContentFiltering:
             if not movieData.empty:
                 compareFeatureVectors = movieData["cosineSimilarity"].values[0]
 
-            assert (len(similarMovies) <= noMovies)
-            if len(similarMovies) < noMovies:
-                heapq.heappush(similarMovies, (compareFeatureVectors, movie))
+            assert (len(similarMoviesHeap) <= noMovies)
+            if len(similarMoviesHeap) < noMovies:
+                heapq.heappush(similarMoviesHeap, (compareFeatureVectors, movie))
             else:
                 #heapq.heapify(similarMovies)
-                heapq.heappushpop(similarMovies, (compareFeatureVectors, movie))
+                heapq.heappushpop(similarMoviesHeap, (compareFeatureVectors, movie))
 
+        similarMoviesHeapSize = len(similarMoviesHeap)
+        similarMovies = [heapq.heappop(similarMoviesHeap) for _ in range(0, similarMoviesHeapSize)]
+        similarMovies = list(reversed(similarMovies))
         similarMoviesIds = [elem[1] for elem in similarMovies]
         return similarMoviesIds
 
 
     def getImpersonatedUserMovies(self, userId, noMovies):
         RatingsArray = self._readRatings()
+        # assert (RatingsArray.shape[1] > userId)
+        if RatingsArray.shape[1] < userId:
+            print("userId exceeds length of userIds")
+            exit()
         RatingsArray = RatingsArray.values
         userRatings = list(RatingsArray[:,userId])
         for i in range(0, len(userRatings)):
             userRatings[i] = (i, userRatings[i])
         userRatings.sort(key=lambda x: x[1], reverse=True)
-        assert (len(userRatings) > noMovies)
+        # assert (len(userRatings) > noMovies)
+        if len(userRatings) < noMovies:
+            print("noMovies exceeds length of userRatings")
+            exit()
         return userRatings[:noMovies]

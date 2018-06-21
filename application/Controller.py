@@ -4,15 +4,23 @@ from Repository import Repository
 from math import sqrt
 
 
-def isPrime(magicNumber):
-    if magicNumber < 2:
+def isMagicNumber(number):
+    # 0, 2, 3, 5 are magic
+    # from 5 on all primes and next of primes are magic
+    if number < 0:
         return False
-    if magicNumber == 2:
+    if number == 0:
         return True
-    if magicNumber % 2 == 0:
+    if number == 1:
         return False
-    for number in range(3, int(sqrt(magicNumber)) + 1, 2):
-        if magicNumber % number == 0:
+    if number == 2:
+        return True
+    if number == 3:
+        return True
+    if number % 2 == 0:
+        return False
+    for number in range(5, int(sqrt(number)) + 1, 2):
+        if number % number == 0:
             return False
     else:
         return True
@@ -20,42 +28,32 @@ def isPrime(magicNumber):
 
 class Controller:
     def __init__(self, trainSetPath, dataset, ratingsFilename, tagsFilename, moviesFilename):
-        # trainSetPath = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\training\\sets\\"
         self._trainSetPath = trainSetPath
-
-        # dataset = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\data\\collaborative\\collaborativeRatings.csv"
         self._dataset = dataset
-
-        # ratingsFilename = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\data\\content\\contentRatings.csv"
         self._ratingsFilename = ratingsFilename
-
-        # tagsFilename = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\data\\content\\contentTags.csv"
         self._tagsFilename = tagsFilename
-
-        # moviesFilename = "d:\\TreburiSocoteli\\MovieRecommenderSystem\\data\\content\\contentMovies.csv"
         self._repo = Repository(moviesFilename)
 
 
     def _hybridise(self, noMovies, collaborativeMovies, contentMovies):
         recommendedMovies = []
+        recommendedMoviesSet = set()
         count = 0
         while count < noMovies:
-            if count == 0:
-                recommendedMovies.append(contentMovies[0])
-                contentMovies = contentMovies[1:]
-                count += 1
-            if isPrime(count):
-                recommendedMovies.append(contentMovies[0])
-                contentMovies = contentMovies[1:]
-                count += 1
-                if count < noMovies:
-                    recommendedMovies.append(contentMovies[0])
-                    contentMovies = contentMovies[1:]
+            if isMagicNumber(count):
+                movieToAdd = contentMovies[0]
+                if movieToAdd not in recommendedMoviesSet:
+                    recommendedMoviesSet.add(movieToAdd)
+                    recommendedMovies.append(movieToAdd)
                     count += 1
+                contentMovies = contentMovies[1:]
             else:
-                recommendedMovies.append(collaborativeMovies[0])
+                movieToAdd = collaborativeMovies[0]
+                if movieToAdd not in recommendedMoviesSet:
+                    recommendedMoviesSet.add(movieToAdd)
+                    recommendedMovies.append(movieToAdd)
+                    count += 1
                 collaborativeMovies = collaborativeMovies[1:]
-                count += 1
         return recommendedMovies
 
 
@@ -74,10 +72,10 @@ class Controller:
         elif method == "Hybrid":
             collaborativeTrainer = CollaborativeFiltering(self._ratingsFilename, self._trainSetPath)
             # collaborativeTrainer.train()
-            collaborativeMovies = collaborativeTrainer.getSimilarMovies(movieId, noMovies)
+            collaborativeMovies = collaborativeTrainer.getSimilarMovies(movieId, noMovies*2)
             contentTrainer = ContentFiltering(self._ratingsFilename, self._tagsFilename, self._trainSetPath)
             # contentTrainer.train()
-            contentMovies = contentTrainer.getSimilarMovies(movieId, noMovies)
+            contentMovies = contentTrainer.getSimilarMovies(movieId, noMovies*2)
             return self._hybridise(noMovies, collaborativeMovies, contentMovies)
 
         else:
@@ -99,10 +97,10 @@ class Controller:
         elif method == "Hybrid":
             collaborativeTrainer = CollaborativeFiltering(self._ratingsFilename, self._trainSetPath)
             # collaborativeTrainer.train()
-            collaborativeMovies = collaborativeTrainer.getImpersonatedUserMovies(userId, noMovies)
+            collaborativeMovies = collaborativeTrainer.getImpersonatedUserMovies(userId, noMovies*2)
             contentTrainer = ContentFiltering(self._ratingsFilename, self._tagsFilename, self._trainSetPath)
             # contentTrainer.train()
-            contentMovies = contentTrainer.getImpersonatedUserMovies(userId, noMovies)
+            contentMovies = contentTrainer.getImpersonatedUserMovies(userId, noMovies*2)
             return self._hybridise(noMovies, collaborativeMovies, contentMovies)
 
         else:
