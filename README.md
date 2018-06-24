@@ -1,2 +1,2 @@
 # MovieRecommenderSystem
-Hybrid filtering for movie recommender system
+Hybrid Filtering for Movie Recommender Systems
